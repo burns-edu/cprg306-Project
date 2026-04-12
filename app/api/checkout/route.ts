@@ -1,27 +1,60 @@
-import Stripe from 'stripe';
+import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
 
 export async function POST(request: Request) {
-    const { items } = await request.json()
+  const { items, userId } = await request.json();
 
-    const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: items.map((item: any) => ({
-            price_data: {
-                currency: 'cad',
-                product_data: {
-                    name: item.title,
-                    images: [item.cover_url],
-                },
-                unit_amount: Math.round(item.price * 100),
-            },
-            quantity: item.qty ?? 1,
-        })),
-        mode: "payment",
-        success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/cart?success=true`,
-        cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/cart`,
+  // Calculate total
+  const total = items.reduce(
+    (sum: number, item: any) => sum + item.price * (item.qty ?? 1),
+    0,
+  );
+
+  // 1. Create the order
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .insert({
+      userID: userId,
+      orderDate: new Date().toISOString().split("T")[0], // formats as YYYY-MM-DD
+      total,
+      status: "confirmed",
     })
+    .select()
+    .single();
 
-    return Response.json({ url: session.url })
+  if (orderError) {
+    return Response.json({ error: orderError.message }, { status: 500 });
+  }
+
+  // 2. Insert order items
+  const orderItems = items.map((item: any) => ({
+    orderId: order.id,
+    bookId: item.bookId,
+    qty: item.qty ?? 1,
+    price: item.price,
+  }));
+
+  const { error: itemsError } = await supabase
+    .from("orderItems")
+    .insert(orderItems);
+
+  if (itemsError) {
+    return Response.json({ error: itemsError.message }, { status: 500 });
+  }
+
+  // 3. Clear the user's cart
+  const { error: cartError } = await supabase
+    .from("cartItems")
+    .delete()
+    .eq("userId", userId);
+
+  if (cartError) {
+    return Response.json({ error: cartError.message }, { status: 500 });
+  }
+
+  return Response.json({ success: true });
 }

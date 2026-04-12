@@ -43,8 +43,14 @@ export default function cart() {
       body: JSON.stringify({ items: cartItems })
     })
 
-    const { url } = await res.json()
-    window.location.href = url
+    const { success } = await res.json()
+    if (success) {
+      localStorage.removeItem('cart')
+      router.push('/cart?success=true')
+    } else {
+      alert('Checkout failed. Please try again.')
+    }
+    setLoading(false)
 
 
   }
