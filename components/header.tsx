@@ -24,14 +24,10 @@ export default function Header() {
   return (
     <header>
       <nav className="text-[#D8D78F] bg-[#aa5042] py-2 flex flex-1 items-center">
-        <div className="flex justify-start">
+        <div className="flex justify-start ml-4">
           <Link href="/">Home</Link>
         </div>
-        <div className="flex flex-1 justify-center gap-5">
-          <Link href="/book">Book</Link>
-          <Link href="/book">Book2</Link>
-        </div>
-        <div className="flex flex-1 justify-end">
+        <div className="flex flex-1 justify-end mr-4">
           {user ? (
             <button onClick={handleSignOut}>Log Out</button>
           ) : (
