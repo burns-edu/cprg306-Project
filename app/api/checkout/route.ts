@@ -30,5 +30,42 @@ export async function POST(request: Request) {
         },
     });
 
+    // Process order immediately after Stripe session is created
+    if (user) {
+        console.log('Processing order for user:', user.id)
+        const total = items.reduce(
+            (sum: number, item: any) => sum + item.price * (item.qty ?? 1), 0
+        );
+        console.log('Total:', total)
+
+        const { data: order, error: orderError } = await supabase
+            .from('orders')
+            .insert({
+                userId: user.id,
+                orderDate: new Date().toISOString().split('T')[0],
+                total,
+                status: 'confirmed',
+            })
+            .select()
+            .single();
+
+        console.log('Order:', order, 'Error:', orderError)
+
+        if (order) {
+            const { error: itemsError } = await supabase.from('orderItems').insert(
+                items.map((item: any) => ({
+                    orderId: order.id,
+                    bookId: item.id,
+                    quantity: item.qty ?? 1,
+                    price: item.price,
+                }))
+            );
+            console.log('Items error:', itemsError)
+
+            const { error: cartError } = await supabase.from('cartItems').delete().eq('userId', user.id);
+            console.log('Cart error:', cartError)
+        }
+    }
+
     return Response.json({ url: session.url });
 }

@@ -76,7 +76,7 @@ export default function OrderHistory() {
               </div>
               <div className="flex items-center gap-6">
                 <p>${order.total}</p>
-                <Link href={`/orders/${order.id}`}>View Details</Link>
+                <Link href={`/order_history/${order.id}`}>View Details</Link>
               </div>
             </div>
           ))}
