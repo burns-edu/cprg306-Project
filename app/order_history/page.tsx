@@ -51,7 +51,9 @@ export default function OrderHistory() {
 
   return (
     <main>
-      <h1 className="text-4xl mt-5 ml-8">Order History</h1>
+      <h1 className="text-4xl text-white text-center mt-5 ml-8">
+        Order History
+      </h1>
       {orders.length === 0 ? (
         <p className="ml-8 mt-4">No orders found.</p>
       ) : (

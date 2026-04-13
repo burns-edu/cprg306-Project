@@ -2,6 +2,9 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+const supabase = createClient();
 
 interface Book {
   id: string;
@@ -25,18 +28,37 @@ function BookContent() {
       .then((data) => setBook(data));
   }, [id]);
 
-  function handleAddToCart() {
+  async function handleAddToCart() {
     if (!book) return;
 
-    const existing = localStorage.getItem("cart");
-    const cart = existing ? JSON.parse(existing) : [];
-
-    const alreadyIn = cart.find((item: any) => item.id === book.id);
-    if (!alreadyIn) {
-      cart.push({ ...book, qty: 1 });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    console.log("user:", user);
+    if (!user) {
+      alert("You must be logged in to add items to your cart.");
+      return;
     }
 
-    localStorage.setItem("cart", JSON.stringify(cart));
+    // Check if already in cart
+    const { data: existing, error: existingError } = await supabase
+      .from("cartItems")
+      .select()
+      .eq("userId", user.id)
+      .eq("bookId", book.id)
+      .maybeSingle();
+
+    console.log("existing:", existing, "error:", existingError);
+
+    // INSERT - uses insertData/insertError
+    if (!existing) {
+      const { data: insertData, error: insertError } = await supabase
+        .from("cartItems")
+        .insert({ userId: user.id, bookId: book.id, quantity: 1 });
+
+      console.log("insert result:", insertData, "error:", insertError);
+    }
+
     setAdded(true);
   }
 
