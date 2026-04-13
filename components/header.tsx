@@ -27,6 +27,7 @@ export default function Header() {
         <div className="flex flex-row justify-start pl-5 gap-10">
           <Link href="/">Home</Link>
           <Link href="/order_history">Order History</Link>
+          <Link href="/cart">Cart</Link>
         </div>
         <div className="flex flex-1 justify-end pr-5">
           {user ? (

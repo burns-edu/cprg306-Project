@@ -2,7 +2,9 @@
 import React, { useEffect, useState } from 'react'
 import '../globals.css'
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
+const supabase = createClient();
 
 interface CartItem {
   id: string;
@@ -16,23 +18,63 @@ interface CartItem {
 export default function cart() {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    const stored = localStorage.getItem('cart');
-    if (stored) {
-      setCartItems(JSON.parse(stored));
+    async function loadCart() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      setUserId(user.id)
+
+      const { data, error } = await supabase
+        .from('cartItems')
+        .select(`
+          quantity,
+          book:bookId (
+            id,
+            title,
+            author,
+            cover_url,
+            price
+          )
+        `)
+        .eq('userId', user.id)
+
+        console.log('data:', data, 'error:', error)
+
+      if (error || !data) return
+
+      const items = data.map((row: any) => ({
+        id: row.book.id,
+        title: row.book.title,
+        author: row.book.author,
+        cover_url: row.book.cover_url,
+        price: row.book.price,
+        qty: row.quantity,
+      }))
+
+      setCartItems(items)
     }
+
+    loadCart()
   }, []);
 
 
   const total = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0)
 
 
-  function handleRemove(id: string) {
+  async function handleRemove(id: string) {
     const updated = cartItems.filter(item => item.id !== id);
     setCartItems(updated);
-    localStorage.setItem('cart', JSON.stringify(updated));
+
+    if (userId) {
+      await supabase
+        .from('cartItems')
+        .delete()
+        .eq('userId', userId)
+        .eq('bookId', id)
+    }
   }
 
   async function handleCheckout() {
@@ -45,12 +87,7 @@ export default function cart() {
 
     const { url } = await res.json()
     window.location.href = url
-
-
   }
-
-
-
 
   return (
     <div className='bg-black min-h-screen w-full flex flex-col items-center text-center'>
